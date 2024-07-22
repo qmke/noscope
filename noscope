@@ -29,9 +29,9 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 4483362458)
 
 local Button = MainTab:CreateButton({
-   Name = "bitch",
+   Name = "Enable Hitboxes",
    Callback = function()
-       local HEAD_SIZE = 19
+       local HEAD_SIZE = 16
 
        local Players = game:GetService("Players")
        local RunService = game:GetService("RunService")
@@ -46,7 +46,7 @@ local Button = MainTab:CreateButton({
                            -- Create a table to store the properties
                            local properties = {
                                Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
-                               Transparency = 0.7,
+                               Transparency = 0.5,
                                BrickColor = BrickColor.new("Really blue"),
                                Material = Enum.Material.Neon,
                                CanCollide = false
@@ -62,7 +62,12 @@ local Button = MainTab:CreateButton({
            end
        end
 
+       -- Disconnect the previous connection if it exists
+       if _G.hitboxUpdateConnection then
+           _G.hitboxUpdateConnection:Disconnect()
+       end
+
        -- Use a more descriptive name for the connection
-       local hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
+       _G.hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
    end,
 })
