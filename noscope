@@ -1,64 +1,135 @@
--- Load Rayfield
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-
--- Create Window
-local Window = Rayfield:CreateWindow({
-    Name = "Quantium",
-    LoadingTitle = "Quantium Interface Suite",
-    LoadingSubtitle = "by Quantium",
-    ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Quantium" },
-    Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true },
-    KeySystem = false,
-    KeySettings = {
-        Title = "Quantium",
-        Subtitle = "Key System",
-        Note = "Please enter the key to access the GUI",
-        FileName = "Key",
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = {"Hello"}
-    }
-})
-
--- Create Tabs
-local MainTab = Window:CreateTab("Main", 4483362458)
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
-
--- Define Variables for FOV Circle
-local FOV = 250
+-- Define variables and functions
 local Circle = Drawing.new("Circle")
-Circle.Color = Color3.fromRGB(22, 13, 56)
-Circle.Thickness = 1
-Circle.Radius = FOV
-Circle.Visible = true
-Circle.NumSides = 1000
-Circle.Filled = false
-Circle.Transparency = 1
-
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-
--- Handle FOV Circle Toggle
-local AimbotFOVEnabled = true
-local function updateFOVCircle()
-    if AimbotFOVEnabled then
-        local Mouse = UserInputService:GetMouseLocation()
-        Circle.Position = Vector2.new(Mouse.X, Mouse.Y)
-        Circle.Visible = true
-    else
-        Circle.Visible = false
-    end
-    Circle.Radius = FOV
+if Circle then
+    Circle.Color = Color3.fromRGB(22, 13, 56)
+    Circle.Thickness = 1
+    Circle.Radius = 250
+    Circle.Visible = false 
+    Circle.NumSides = 1000
+    Circle.Filled = false
+    Circle.Transparency = 1
 end
 
-RunService.Stepped:Connect(updateFOVCircle)
+local Shoot, Aim
+UserInputService.InputBegan:Connect(function(v)
+    if v.UserInputType == Enum.UserInputType.MouseButton2 then
+        Shoot = true
+        Aim = true
+    end
+end)
 
--- Hitbox Adjustments
-local HEAD_SIZE = 16
+UserInputService.InputEnded:Connect(function(v)
+    if v.UserInputType == Enum.UserInputType.MouseButton2 then
+        Shoot = false
+        Aim = false
+    end
+end)
+
+local NotWall = function(i, v)
+    if AimbotWallCheck then
+        local c = Workspace.CurrentCamera.CFrame.p
+        local a = Ray.new(c, i - c)
+        local f = Workspace:FindPartOnRayWithIgnoreList(a, v)
+        return f == nil
+    else
+        return true
+    end
+end
+
+local GetClosestToCursor = function()
+    local Target, Mouse, IsFFA = nil, Player:GetMouse(), ReplicatedStorage.wkspc.FFA.Value
+    for _,v in next, Players:GetPlayers() do
+        if v ~= Player then
+            if v.Team ~= Player.Team or v.Team == Player.Team and IsFFA then
+                if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                    if Player.Character:FindFirstChildWhichIsA("Humanoid").Health ~= 0 then
+                        local Point, OnScreen = Workspace.CurrentCamera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                        if OnScreen and NotWall(v.Character.HumanoidRootPart.Position, {Player.Character, v.Character}) then
+                            local Mag = (Vector2.new(Point.X, Point.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                            if Mag <= FOV then
+                                Target = v
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return Target
+end
+
+local ValuesTable = {}
+local ChangeValue = function(NewValue, Amount, Toggle)
+    for i,v in next, ReplicatedStorage.Weapons:GetChildren() do
+        if not v.Model:FindFirstChild("Secondary", true) then
+            if Toggle and v:FindFirstChild(NewValue) ~= nil then
+                local Value1 = v:FindFirstChild(NewValue)
+                ValuesTable[Value1] = Value1.Value
+                VG.DisableConnection(Value1.Changed)
+                Value1.Value = Amount
+            elseif not Toggle and v:FindFirstChild(NewValue) ~= nil then
+                local Value1 = v:FindFirstChild(NewValue)
+                if table.find(ValuesTable, Value1) then
+                    Value1.Value = ValuesTable[Value1]
+                end
+            end
+        end
+    end
+end
+
+spawn(function()
+    while wait(3) do
+        pcall(function()
+            ChangeValue("Auto", true, Auto)
+            ChangeValue("Ammo", 999, InfiniteAmmo)
+            ChangeValue("FireRate", 0.02, FireRate)
+            ChangeValue("Spread", 0, NoSpread)
+            ChangeValue("MaxSpread", 0, NoSpread)
+            ChangeValue("RecoilControl", 0, Recoil)
+        end)
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    pcall(function()
+        if ToggleAimbot and Shoot then
+            local ClosestPlayer = GetClosestToCursor()
+            if ClosestPlayer then
+                Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, ClosestPlayer.Character.Head.CFrame.Position)
+            end
+        end
+    end)
+end)
+
+-- Load external modules
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/Main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- Create the main window and tabs
+local Window = Fluent:CreateWindow({
+    Title = "Quantium: Game " .. MarketplaceService:GetProductInfo(game.PlaceId).Name,
+    SubTitle = "by Quantium",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false,
+    Theme = "Darker",
+    MinimizeKey = Enum.KeyCode.Delete
+})
+
+local Tabs = {
+    SilentAim = Window:AddTab({ Title = "Silent Aim", Icon = "" })
+}
+
+local Options = Fluent.Options
+
+-- Define Silent Aim Variables
+local HEAD_SIZE = 19
 local hitboxUpdateConnection
+local AimbotWallCheck = false
+local ToggleAimbot = false
 
+-- Silent Aim Functions
 local function updateHitboxes()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= Players.LocalPlayer then
@@ -83,135 +154,47 @@ local function updateHitboxes()
     end
 end
 
--- MainTab UI Elements
-MainTab:CreateButton({
-    Name = "Silent Aim",
-    Callback = function()
-        if hitboxUpdateConnection then
-            hitboxUpdateConnection:Disconnect()
-            hitboxUpdateConnection = nil
-            print("Silent Aim disabled")
-        else
-            hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
-            print("Silent Aim enabled")
-        end
-    end
-})
+-- Configure tabs and UI elements
+do
+    Fluent:Notify({
+        Title = "Quantium Loaded",
+        Content = "Congrats you're using Quantium",
+        Duration = 10
+    })
 
-MainTab:CreateToggle({
-    Name = "FOV Circle Enabled",
-    Default = true,
-    Callback = function(value)
-        AimbotFOVEnabled = value
-    end
-})
-
--- VisualsTab UI Elements
-local espEnabled = false
-local espCache = {}
-local settings = {
-    defaultcolor = Color3.fromRGB(255, 0, 0),
-    teamcheck = false,
-    teamcolor = true
-}
-
-local function createEsp(player)
-    local drawings = {}
-    
-    drawings.box = Drawing.new("Square")
-    drawings.box.Thickness = 1
-    drawings.box.Filled = false
-    drawings.box.Color = settings.defaultcolor
-    drawings.box.Visible = false
-    drawings.box.ZIndex = 2
-
-    drawings.boxoutline = Drawing.new("Square")
-    drawings.boxoutline.Thickness = 3
-    drawings.boxoutline.Filled = false
-    drawings.boxoutline.Color = Color3.new()
-    drawings.boxoutline.Visible = false
-    drawings.boxoutline.ZIndex = 1
-
-    espCache[player] = drawings
-end
-
-local function removeEsp(player)
-    if rawget(espCache, player) then
-        for _, drawing in next, espCache[player] do
-            drawing:Remove()
-        end
-        espCache[player] = nil
-    end
-end
-
-local function updateEsp(player, esp)
-    local character = player and player.Character
-    if character then
-        local cframe = character:GetModelCFrame()
-        local position, visible, depth = workspace.CurrentCamera:WorldToViewportPoint(cframe.Position)
-
-        -- Debugging
-        if depth == nil then
-            print("Depth is nil for player:", player.Name)
-        end
-
-        esp.box.Visible = visible
-        esp.boxoutline.Visible = visible
-
-        if cframe and visible and depth then
-            local scaleFactor = 1 / (depth * math.tan(math.rad(workspace.CurrentCamera.FieldOfView / 2)) * 2) * 1000
-            local width, height = math.round(4 * scaleFactor), math.round(5 * scaleFactor)
-            local x, y = math.round(position.X), math.round(position.Y)
-
-            esp.box.Size = Vector2.new(width, height)
-            esp.box.Position = Vector2.new(x - width / 2, y - height / 2)
-            esp.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
-
-            esp.boxoutline.Size = esp.box.Size
-            esp.boxoutline.Position = esp.box.Position
-        else
-            esp.box.Visible = false
-            esp.boxoutline.Visible = false
-        end
-    else
-        esp.box.Visible = false
-        esp.boxoutline.Visible = false
-    end
-end
-
-VisualsTab:CreateButton({
-    Name = "Activate ESP",
-    Callback = function()
-        if not espEnabled then
-            espEnabled = true
-            for _, player in next, Players:GetPlayers() do
-                if player ~= Player then
-                    createEsp(player)
-                end
+    -- Silent Aim Tab
+    local SilentAimButton = Tabs.SilentAim:AddButton({
+        Title = "Enable Silent Aim",
+        Callback = function()
+            if hitboxUpdateConnection then
+                hitboxUpdateConnection:Disconnect()
+                hitboxUpdateConnection = nil
+                print("Silent Aim disabled")
+            else
+                hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
+                print("Silent Aim enabled")
             end
         end
-    end
+    })
+end
+
+-- Configure external modules
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/specific-game")
+
+-- Select the first tab by default
+Window:SelectTab(1)
+
+-- Final notification
+Fluent:Notify({
+    Title = "Quantium",
+    Content = "The script has been loaded.",
+    Duration = 8
 })
 
--- Setup ESP for new and existing players
-Players.PlayerAdded:Connect(function(player)
-    if espEnabled then
-        createEsp(player)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    removeEsp(player)
-end)
-
-RunService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
-    for player, drawings in next, espCache do
-        if settings.teamcheck and player.Team == Player.Team then
-            continue
-        end
-
-        if drawings and player ~= Player then
-            updateEsp(player, drawings)
-        end
-    end
-end)
+-- Load autoload configuration
+SaveManager:LoadAutoloadConfig()
