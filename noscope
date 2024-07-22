@@ -29,20 +29,12 @@ local Window = Rayfield:CreateWindow({
 local MainTab = Window:CreateTab("Main", 4483362458)
 
 local Button = MainTab:CreateButton({
-   Name = "Enable Hitboxes",
+   Name = "bitch",
    Callback = function()
        local HEAD_SIZE = 19
 
        local Players = game:GetService("Players")
        local RunService = game:GetService("RunService")
-
-       local properties = {
-           Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
-           Transparency = 1,
-           BrickColor = BrickColor.new("Really blue"),
-           Material = Enum.Material.Neon,
-           CanCollide = false
-       }
 
        local function updateHitboxes()
            for _, player in ipairs(Players:GetPlayers()) do
@@ -51,10 +43,18 @@ local Button = MainTab:CreateButton({
                    if character then
                        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
                        if humanoidRootPart then
+                           -- Create a table to store the properties
+                           local properties = {
+                               Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
+                               Transparency = 0.7,
+                               BrickColor = BrickColor.new("Really blue"),
+                               Material = Enum.Material.Neon,
+                               CanCollide = false
+                           }
+
+                           -- Use a loop to set the properties
                            for property, value in pairs(properties) do
-                               if humanoidRootPart[property] ~= value then
-                                   humanoidRootPart[property] = value
-                               end
+                               humanoidRootPart[property] = value
                            end
                        end
                    end
@@ -62,31 +62,7 @@ local Button = MainTab:CreateButton({
            end
        end
 
-       local hitboxUpdateConnection
-
-       local function onPlayerAdded(player)
-           player.CharacterAdded:Connect(function()
-               if not hitboxUpdateConnection then
-                   hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
-               end
-           end)
-       end
-
-       Players.PlayerAdded:Connect(onPlayerAdded)
-
-       for _, player in ipairs(Players:GetPlayers()) do
-           onPlayerAdded(player)
-       end
-
-       if #Players:GetPlayers() > 1 then
-           hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
-       end
-
-       Players.PlayerRemoving:Connect(function(player)
-           if player ~= Players.LocalPlayer and #Players:GetPlayers() <= 1 and hitboxUpdateConnection then
-               hitboxUpdateConnection:Disconnect()
-               hitboxUpdateConnection = nil
-           end
-       end)
+       -- Use a more descriptive name for the connection
+       local hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
    end,
 })
