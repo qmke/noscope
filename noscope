@@ -1,73 +1,217 @@
+-- Load Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- Create Window
 local Window = Rayfield:CreateWindow({
-   Name = "Quantium",
-   LoadingTitle = "Quantium",
-   LoadingSubtitle = "by Wyrizon",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil, -- Create a custom folder for your hub/game
-      FileName = "Quantium"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ABCD would be ABCD
-      RememberJoins = true -- Set this to false to make them join the discord every time they load it up
-   },
-   KeySystem = true, -- Set to true to use the key system
-   KeySettings = {
-      Title = "Quantium",
-      Subtitle = "Key System",
-      Note = "Please enter the key to access the GUI",
-      FileName = "Key", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
-      SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
-      GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
-      Key = {"test123"} -- List of keys that will be accepted by the system, can be RAW file links (pastebin, github etc) or simple strings ("hello","key22")
-   }
+    Name = "Quantium",
+    LoadingTitle = "Quantium Interface Suite",
+    LoadingSubtitle = "by Quantium",
+    ConfigurationSaving = { Enabled = true, FolderName = nil, FileName = "Quantium" },
+    Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true },
+    KeySystem = false,
+    KeySettings = {
+        Title = "Quantium",
+        Subtitle = "Key System",
+        Note = "Please enter the key to access the GUI",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"Hello"}
+    }
 })
 
+-- Create Tabs
 local MainTab = Window:CreateTab("Main", 4483362458)
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
 
-local Button = MainTab:CreateButton({
-   Name = "Enable Hitboxes",
-   Callback = function()
-       local HEAD_SIZE = 16
+-- Define Variables for FOV Circle
+local FOV = 250
+local Circle = Drawing.new("Circle")
+Circle.Color = Color3.fromRGB(22, 13, 56)
+Circle.Thickness = 1
+Circle.Radius = FOV
+Circle.Visible = true
+Circle.NumSides = 1000
+Circle.Filled = false
+Circle.Transparency = 1
 
-       local Players = game:GetService("Players")
-       local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
 
-       local function updateHitboxes()
-           for _, player in ipairs(Players:GetPlayers()) do
-               if player ~= Players.LocalPlayer then
-                   local character = player.Character
-                   if character then
-                       local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-                       if humanoidRootPart then
-                           -- Create a table to store the properties
-                           local properties = {
-                               Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
-                               Transparency = 0.5,
-                               BrickColor = BrickColor.new("Really blue"),
-                               Material = Enum.Material.Neon,
-                               CanCollide = false
-                           }
+-- Handle FOV Circle Toggle
+local AimbotFOVEnabled = true
+local function updateFOVCircle()
+    if AimbotFOVEnabled then
+        local Mouse = UserInputService:GetMouseLocation()
+        Circle.Position = Vector2.new(Mouse.X, Mouse.Y)
+        Circle.Visible = true
+    else
+        Circle.Visible = false
+    end
+    Circle.Radius = FOV
+end
 
-                           -- Use a loop to set the properties
-                           for property, value in pairs(properties) do
-                               humanoidRootPart[property] = value
-                           end
-                       end
-                   end
-               end
-           end
-       end
+RunService.Stepped:Connect(updateFOVCircle)
 
-       -- Disconnect the previous connection if it exists
-       if _G.hitboxUpdateConnection then
-           _G.hitboxUpdateConnection:Disconnect()
-       end
+-- Hitbox Adjustments
+local HEAD_SIZE = 16
+local hitboxUpdateConnection
 
-       -- Use a more descriptive name for the connection
-       _G.hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
-   end,
+local function updateHitboxes()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer then
+            local character = player.Character
+            if character then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                if humanoidRootPart then
+                    local properties = {
+                        Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
+                        Transparency = 1,
+                        BrickColor = BrickColor.new("Really blue"),
+                        Material = Enum.Material.Neon,
+                        CanCollide = false
+                    }
+
+                    for property, value in pairs(properties) do
+                        humanoidRootPart[property] = value
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- MainTab UI Elements
+MainTab:CreateButton({
+    Name = "Silent Aim",
+    Callback = function()
+        if hitboxUpdateConnection then
+            hitboxUpdateConnection:Disconnect()
+            hitboxUpdateConnection = nil
+            print("Silent Aim disabled")
+        else
+            hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
+            print("Silent Aim enabled")
+        end
+    end
 })
+
+MainTab:CreateToggle({
+    Name = "FOV Circle Enabled",
+    Default = true,
+    Callback = function(value)
+        AimbotFOVEnabled = value
+    end
+})
+
+-- VisualsTab UI Elements
+local espEnabled = false
+local espCache = {}
+local settings = {
+    defaultcolor = Color3.fromRGB(255, 0, 0),
+    teamcheck = false,
+    teamcolor = true
+}
+
+local function createEsp(player)
+    local drawings = {}
+    
+    drawings.box = Drawing.new("Square")
+    drawings.box.Thickness = 1
+    drawings.box.Filled = false
+    drawings.box.Color = settings.defaultcolor
+    drawings.box.Visible = false
+    drawings.box.ZIndex = 2
+
+    drawings.boxoutline = Drawing.new("Square")
+    drawings.boxoutline.Thickness = 3
+    drawings.boxoutline.Filled = false
+    drawings.boxoutline.Color = Color3.new()
+    drawings.boxoutline.Visible = false
+    drawings.boxoutline.ZIndex = 1
+
+    espCache[player] = drawings
+end
+
+local function removeEsp(player)
+    if rawget(espCache, player) then
+        for _, drawing in next, espCache[player] do
+            drawing:Remove()
+        end
+        espCache[player] = nil
+    end
+end
+
+local function updateEsp(player, esp)
+    local character = player and player.Character
+    if character then
+        local cframe = character:GetModelCFrame()
+        local position, visible, depth = workspace.CurrentCamera:WorldToViewportPoint(cframe.Position)
+
+        -- Debugging
+        if depth == nil then
+            print("Depth is nil for player:", player.Name)
+        end
+
+        esp.box.Visible = visible
+        esp.boxoutline.Visible = visible
+
+        if cframe and visible and depth then
+            local scaleFactor = 1 / (depth * math.tan(math.rad(workspace.CurrentCamera.FieldOfView / 2)) * 2) * 1000
+            local width, height = math.round(4 * scaleFactor), math.round(5 * scaleFactor)
+            local x, y = math.round(position.X), math.round(position.Y)
+
+            esp.box.Size = Vector2.new(width, height)
+            esp.box.Position = Vector2.new(x - width / 2, y - height / 2)
+            esp.box.Color = settings.teamcolor and player.TeamColor.Color or settings.defaultcolor
+
+            esp.boxoutline.Size = esp.box.Size
+            esp.boxoutline.Position = esp.box.Position
+        else
+            esp.box.Visible = false
+            esp.boxoutline.Visible = false
+        end
+    else
+        esp.box.Visible = false
+        esp.boxoutline.Visible = false
+    end
+end
+
+VisualsTab:CreateButton({
+    Name = "Activate ESP",
+    Callback = function()
+        if not espEnabled then
+            espEnabled = true
+            for _, player in next, Players:GetPlayers() do
+                if player ~= Player then
+                    createEsp(player)
+                end
+            end
+        end
+    end
+})
+
+-- Setup ESP for new and existing players
+Players.PlayerAdded:Connect(function(player)
+    if espEnabled then
+        createEsp(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    removeEsp(player)
+end)
+
+RunService:BindToRenderStep("esp", Enum.RenderPriority.Camera.Value, function()
+    for player, drawings in next, espCache do
+        if settings.teamcheck and player.Team == Player.Team then
+            continue
+        end
+
+        if drawings and player ~= Player then
+            updateEsp(player, drawings)
+        end
+    end
+end)
