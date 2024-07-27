@@ -1,135 +1,31 @@
--- Define variables and functions
-local Circle = Drawing.new("Circle")
-if Circle then
-    Circle.Color = Color3.fromRGB(22, 13, 56)
-    Circle.Thickness = 1
-    Circle.Radius = 250
-    Circle.Visible = false 
-    Circle.NumSides = 1000
-    Circle.Filled = false
-    Circle.Transparency = 1
-end
+-- Load the library
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/Splix"))()
 
-local Shoot, Aim
-UserInputService.InputBegan:Connect(function(v)
-    if v.UserInputType == Enum.UserInputType.MouseButton2 then
-        Shoot = true
-        Aim = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(v)
-    if v.UserInputType == Enum.UserInputType.MouseButton2 then
-        Shoot = false
-        Aim = false
-    end
-end)
-
-local NotWall = function(i, v)
-    if AimbotWallCheck then
-        local c = Workspace.CurrentCamera.CFrame.p
-        local a = Ray.new(c, i - c)
-        local f = Workspace:FindPartOnRayWithIgnoreList(a, v)
-        return f == nil
-    else
-        return true
-    end
-end
-
-local GetClosestToCursor = function()
-    local Target, Mouse, IsFFA = nil, Player:GetMouse(), ReplicatedStorage.wkspc.FFA.Value
-    for _,v in next, Players:GetPlayers() do
-        if v ~= Player then
-            if v.Team ~= Player.Team or v.Team == Player.Team and IsFFA then
-                if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
-                    if Player.Character:FindFirstChildWhichIsA("Humanoid").Health ~= 0 then
-                        local Point, OnScreen = Workspace.CurrentCamera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
-                        if OnScreen and NotWall(v.Character.HumanoidRootPart.Position, {Player.Character, v.Character}) then
-                            local Mag = (Vector2.new(Point.X, Point.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-                            if Mag <= FOV then
-                                Target = v
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return Target
-end
-
-local ValuesTable = {}
-local ChangeValue = function(NewValue, Amount, Toggle)
-    for i,v in next, ReplicatedStorage.Weapons:GetChildren() do
-        if not v.Model:FindFirstChild("Secondary", true) then
-            if Toggle and v:FindFirstChild(NewValue) ~= nil then
-                local Value1 = v:FindFirstChild(NewValue)
-                ValuesTable[Value1] = Value1.Value
-                VG.DisableConnection(Value1.Changed)
-                Value1.Value = Amount
-            elseif not Toggle and v:FindFirstChild(NewValue) ~= nil then
-                local Value1 = v:FindFirstChild(NewValue)
-                if table.find(ValuesTable, Value1) then
-                    Value1.Value = ValuesTable[Value1]
-                end
-            end
-        end
-    end
-end
-
-spawn(function()
-    while wait(3) do
-        pcall(function()
-            ChangeValue("Auto", true, Auto)
-            ChangeValue("Ammo", 999, InfiniteAmmo)
-            ChangeValue("FireRate", 0.02, FireRate)
-            ChangeValue("Spread", 0, NoSpread)
-            ChangeValue("MaxSpread", 0, NoSpread)
-            ChangeValue("RecoilControl", 0, Recoil)
-        end)
-    end
-end)
-
-RunService.Stepped:Connect(function()
-    pcall(function()
-        if ToggleAimbot and Shoot then
-            local ClosestPlayer = GetClosestToCursor()
-            if ClosestPlayer then
-                Workspace.CurrentCamera.CFrame = CFrame.new(Workspace.CurrentCamera.CFrame.Position, ClosestPlayer.Character.Head.CFrame.Position)
-            end
-        end
-    end)
-end)
-
--- Load external modules
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/Main.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
-
--- Create the main window and tabs
-local Window = Fluent:CreateWindow({
-    Title = "Quantium: Game " .. MarketplaceService:GetProductInfo(game.PlaceId).Name,
-    SubTitle = "by Quantium",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
-    Acrylic = false,
-    Theme = "Darker",
-    MinimizeKey = Enum.KeyCode.Delete
+-- Create the window
+local window = library:new({
+    textsize = 13.5,
+    font = Enum.Font.RobotoMono,
+    name = "Minutes _",
+    color = Color3.fromRGB(225, 58, 81)
 })
 
-local Tabs = {
-    SilentAim = Window:AddTab({ Title = "Silent Aim", Icon = "" })
-}
+-- Create the main tab
+local tab = window:page({name = "Main"})
 
-local Options = Fluent.Options
+-- Create a section within the tab
+local section1 = tab:section({
+    name = "Main",
+    side = "left",
+    size = 150
+})
 
--- Define Silent Aim Variables
-local HEAD_SIZE = 19
+-- Silent Aim Functionality
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local HEAD_SIZE = 16
 local hitboxUpdateConnection
-local AimbotWallCheck = false
-local ToggleAimbot = false
 
--- Silent Aim Functions
 local function updateHitboxes()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= Players.LocalPlayer then
@@ -154,47 +50,19 @@ local function updateHitboxes()
     end
 end
 
--- Configure tabs and UI elements
-do
-    Fluent:Notify({
-        Title = "Quantium Loaded",
-        Content = "Congrats you're using Quantium",
-        Duration = 10
-    })
-
-    -- Silent Aim Tab
-    local SilentAimButton = Tabs.SilentAim:AddButton({
-        Title = "Enable Silent Aim",
-        Callback = function()
+section1:toggle({
+    name = "Silent Aim",
+    def = false,
+    callback = function(value)
+        if value then
+            hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
+            print("Silent Aim enabled")
+        else
             if hitboxUpdateConnection then
                 hitboxUpdateConnection:Disconnect()
                 hitboxUpdateConnection = nil
                 print("Silent Aim disabled")
-            else
-                hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
-                print("Silent Aim enabled")
             end
         end
-    })
-end
-
--- Configure external modules
-SaveManager:SetLibrary(Fluent)
-InterfaceManager:SetLibrary(Fluent)
-SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({})
-InterfaceManager:SetFolder("FluentScriptHub")
-SaveManager:SetFolder("FluentScriptHub/specific-game")
-
--- Select the first tab by default
-Window:SelectTab(1)
-
--- Final notification
-Fluent:Notify({
-    Title = "Quantium",
-    Content = "The script has been loaded.",
-    Duration = 8
+    end
 })
-
--- Load autoload configuration
-SaveManager:LoadAutoloadConfig()
