@@ -1,68 +1,87 @@
--- Load the library
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/Splix"))()
+-- List of valid keys
+local valid_keys = {
+    "minutes-free1",
+}
 
--- Create the window
-local window = library:new({
-    textsize = 13.5,
-    font = Enum.Font.RobotoMono,
-    name = "Minutes _",
-    color = Color3.fromRGB(225, 58, 81)
-})
+-- Check if the script key is valid
+local is_key_valid = false
+for _, key in ipairs(valid_keys) do
+    if key == script_key then
+        is_key_valid = true
+        break
+    end
+end
 
--- Create the main tab
-local tab = window:page({name = "Main"})
+-- Load the script if the key is valid
+if is_key_valid then
+    -- Load the library
+    local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/Splix"))()
 
--- Create a section within the tab
-local section1 = tab:section({
-    name = "Main",
-    side = "left",
-    size = 150
-})
+    -- Create the window
+    local window = library:new({
+        textsize = 13.5,
+        font = Enum.Font.RobotoMono,
+        name = "Minutes _",
+        color = Color3.fromRGB(225, 58, 81)
+    })
 
--- Silent Aim Functionality
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+    -- Create the main tab
+    local tab = window:page({name = "Main"})
 
-local HEAD_SIZE = 16
-local hitboxUpdateConnection
+    -- Create a section within the tab
+    local section1 = tab:section({
+        name = "Main",
+        side = "left",
+        size = 150
+    })
 
-local function updateHitboxes()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer then
-            local character = player.Character
-            if character then
-                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-                if humanoidRootPart then
-                    local properties = {
-                        Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
-                        Transparency = 1,
-                        BrickColor = BrickColor.new("Really blue"),
-                        Material = Enum.Material.Neon,
-                        CanCollide = false
-                    }
+    -- Silent Aim Functionality
+    local RunService = game:GetService("RunService")
+    local Players = game:GetService("Players")
 
-                    for property, value in pairs(properties) do
-                        humanoidRootPart[property] = value
+    local HEAD_SIZE = 16
+    local hitboxUpdateConnection
+
+    local function updateHitboxes()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= Players.LocalPlayer then
+                local character = player.Character
+                if character then
+                    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                    if humanoidRootPart then
+                        local properties = {
+                            Size = Vector3.new(HEAD_SIZE, HEAD_SIZE, HEAD_SIZE),
+                            Transparency = 1,
+                            BrickColor = BrickColor.new("Really blue"),
+                            Material = Enum.Material.Neon,
+                            CanCollide = false
+                        }
+
+                        for property, value in pairs(properties) do
+                            humanoidRootPart[property] = value
+                        end
                     end
                 end
             end
         end
     end
-end
 
-section1:toggle({
-    name = "Silent Aim",
-    def = false,
-    callback = function(value)
-        if value then
-            hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
-            print("Silent Aim enabled")
-        else
-            if hitboxUpdateConnection then
-                hitboxUpdateConnection:Disconnect()
-                hitboxUpdateConnection = nil
-                print("Silent Aim disabled")
+    section1:toggle({
+        name = "Silent Aim",
+        def = false,
+        callback = function(value)
+            if value then
+                hitboxUpdateConnection = RunService.RenderStepped:Connect(updateHitboxes)
+                print("Silent Aim enabled")
+            else
+                if hitboxUpdateConnection then
+                    hitboxUpdateConnection:Disconnect()
+                    hitboxUpdateConnection = nil
+                    print("Silent Aim disabled")
+                end
             end
         end
-    end
-})
+    })
+else
+    print("Invalid script key.")
+end
